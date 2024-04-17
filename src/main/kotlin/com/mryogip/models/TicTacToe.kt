@@ -52,14 +52,13 @@ class TicTacToe {
         }
     }
 
-    private suspend fun broadcast(state: GameState) {
-        playerSockets.values.forEach { socket ->
-            socket.send(Json.encodeToString(state))
+    fun finishTurn(player: Char, x: Int, y: Int) {
+        if (x == -1 && y == -1) {
+            startNewRound()
+            return
         }
-    }
 
-    private fun finishTurn(player: Char, x: Int, y: Int) {
-        if (state.value.field[x][y] != null || state.value.winningPlayer != null) {
+        if (state.value.field[y][x] != null || state.value.winningPlayer != null) {
             return
         }
 
@@ -73,7 +72,7 @@ class TicTacToe {
                 field[y][x] = currentPlayer
             }
 
-            val isBoardFull = newField.all { it.all { it != null } }
+            val isBoardFull = newField.all { field -> field.all { value -> value != null } }
             if (isBoardFull) {
                 startNewRoundDelayed()
             }
@@ -86,6 +85,12 @@ class TicTacToe {
                     startNewRoundDelayed()
                 }
             )
+        }
+    }
+
+    private suspend fun broadcast(state: GameState) {
+        playerSockets.values.forEach { socket ->
+            socket.send(Json.encodeToString(state))
         }
     }
 
@@ -114,14 +119,18 @@ class TicTacToe {
         newGameJob?.cancel()
         newGameJob = gameScope.launch {
             delay(5000L)
-            state.update {
-                it.copy(
-                    playerInTurn = 'X',
-                    isBoardFull = false,
-                    winningPlayer = null,
-                    field = GameState.emptyField()
-                )
-            }
+            startNewRound()
+        }
+    }
+
+    private fun startNewRound() {
+        state.update {
+            it.copy(
+                playerInTurn = 'X',
+                isBoardFull = false,
+                winningPlayer = null,
+                field = GameState.emptyField()
+            )
         }
     }
 }
